@@ -35,6 +35,26 @@ describe("GET /offers : accès", () => {
 });
 
 describe("GET /offers : visibilité selon le profil", () => {
+  it("filtre les offres par période sans contourner la visibilité", async () => {
+    const response = await listOffersAs("STUDENT", STUDENT.LUCAS_DUPONT);
+    const filteredResponse = await request(app)
+      .get("/offers?period=P1")
+      .set("Authorization", tokenFor("STUDENT", STUDENT.LUCAS_DUPONT));
+
+    expect(filteredResponse.status).toBe(200);
+    expect(filteredResponse.body).toEqual([]);
+    expect(response.body.every((offer: { status: string }) => offer.status === "PUBLISHED")).toBe(true);
+  });
+
+  it("filtre les offres d'un déposant par période", async () => {
+    const response = await request(app)
+      .get("/offers?period=P1")
+      .set("Authorization", tokenFor("CONTACT", CONTACT.MARC_LEJEUNE));
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.PDF_REPORTS]);
+  });
+
   it("montre toutes les offres à un administrateur, de la plus récente année à la plus ancienne", async () => {
     const response = await listOffersAs("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ);
 
@@ -95,5 +115,16 @@ describe("GET /offers : visibilité selon le profil", () => {
     expect(Object.keys(response.body[0]).sort()).toEqual(
       ["academicYear", "companyShortName", "id", "period", "status", "title"],
     );
+  });
+});
+
+describe("GET /offers : validation du filtre", () => {
+  it("refuse une période inconnue", async () => {
+    const response = await request(app)
+      .get("/offers?period=P3")
+      .set("Authorization", tokenFor("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ));
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("INVALID_QUERY");
   });
 });
