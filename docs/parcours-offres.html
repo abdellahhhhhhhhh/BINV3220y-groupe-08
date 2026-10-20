@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Parcours d'affichage des offres - Gesta</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Arial, sans-serif;
+      color: #1f2937;
+      background: #f3f4f6;
+    }
+
+    body {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 32px 20px;
+      line-height: 1.6;
+    }
+
+    main {
+      background: white;
+      padding: 32px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+    }
+
+    h1, h2 {
+      color: #12355b;
+    }
+
+    .flow {
+      display: grid;
+      gap: 8px;
+      margin: 24px 0;
+    }
+
+    .step {
+      padding: 12px 16px;
+      background: #e8f1f8;
+      border-left: 4px solid #1976a3;
+      border-radius: 4px;
+    }
+
+    .arrow {
+      text-align: center;
+      color: #1976a3;
+      font-weight: bold;
+    }
+
+    code {
+      padding: 2px 4px;
+      background: #eef0f2;
+      border-radius: 3px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .note {
+      padding: 12px 16px;
+      background: #fff7d6;
+      border-left: 4px solid #d59b00;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Parcours d'affichage des offres</h1>
+
+    <p>
+      Cette page décrit le chemin suivi par une offre depuis le composant React
+      jusqu'à la base SQLite, puis son retour vers l'interface.
+    </p>
+
+    <h2>Parcours complet</h2>
+
+    <div class="flow">
+      <div class="step">
+        <strong>1. OffersPage</strong><br>
+        <code>frontend/src/pages/OffersPage.tsx</code>
+        appelle le hook <code>useOffers</code> et transmet les offres à
+        <code>OfferTable</code>.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>2. Hook React</strong><br>
+        <code>frontend/src/hooks/useOffers.ts</code>
+        déclenche le chargement avec un effet React, gère le chargement,
+        les erreurs et les sessions expirées.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>3. Service frontend</strong><br>
+        <code>frontend/src/services/offers.service.ts</code>
+        exécute <code>GET /api/offers</code>, ajoute le jeton d'authentification
+        et valide la réponse JSON.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>4. Proxy Vite</strong><br>
+        <code>frontend/vite.config.ts</code>
+        transmet <code>/api/offers</code> au backend sous la forme
+        <code>/offers</code>.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>5. Authentification et autorisation</strong><br>
+        <code>backend/src/app.ts</code> branche la route protégée.
+        Les middlewares vérifient le jeton et le droit de consulter les offres.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>6. Contrôleur</strong><br>
+        <code>backend/src/controllers/offers.controller.ts</code>
+        appelle le service et transforme chaque résultat en DTO HTTP.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>7. Service métier</strong><br>
+        <code>backend/src/services/offers.service.ts</code>
+        applique la visibilité selon le profil :
+        toutes les offres pour l'administrateur, les offres publiées pour
+        l'étudiant, et les offres déposées par le contact.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>8. Repository SQL</strong><br>
+        <code>backend/src/repositories/offers.repository.ts</code>
+        exécute la requête SQLite et joint les tables
+        <code>companies</code>, <code>academic_years</code> et <code>periods</code>.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>9. Base de données</strong><br>
+        <code>backend/src/db/migrations/001_initial.sql</code>
+        définit les tables <code>offers</code> et <code>periods</code>.
+        Une offre possède déjà un <code>period_id</code>.
+      </div>
+
+      <div class="arrow">↓</div>
+
+      <div class="step">
+        <strong>10. Retour vers React</strong><br>
+        Le mapper convertit les données SQL en DTO,
+        puis <code>OfferTable</code> affiche les résultats.
+      </div>
+    </div>
+
+    <h2>Ajout d'un filtre par période</h2>
+
+    <p>
+      Le schéma actuel contient déjà les périodes. Il faudrait donc principalement
+      ajouter un paramètre de requête, par exemple :
+      <code>GET /offers?period=P1</code>.
+    </p>
+
+    <h3>Backend</h3>
+    <ul>
+      <li><code>backend/src/controllers/offers.controller.ts</code> : lire et valider le paramètre.</li>
+      <li><code>backend/src/services/offers.service.ts</code> : conserver les règles de visibilité et transmettre le filtre.</li>
+      <li><code>backend/src/repositories/offers.repository.ts</code> : ajouter la période à la requête SQL.</li>
+      <li><code>backend/tests/offers.test.ts</code> : tester les résultats filtrés et les erreurs de validation.</li>
+      <li><code>backend/API.md</code> : documenter le nouveau paramètre.</li>
+      <li><code>backend/http/offers.http</code> : ajouter une requête REST de vérification.</li>
+    </ul>
+
+    <h3>Frontend</h3>
+    <ul>
+      <li><code>frontend/src/pages/OffersPage.tsx</code> : ajouter le contrôle de sélection.</li>
+      <li><code>frontend/src/hooks/useOffers.ts</code> : recharger les offres lorsque la période change.</li>
+      <li><code>frontend/src/services/offers.service.ts</code> : envoyer <code>?period=P1</code>.</li>
+      <li><code>frontend/tests/OffersPage.test.tsx</code> : vérifier le contrôle et l'appel filtré.</li>
+    </ul>
+
+    <div class="note">
+      Aucune nouvelle migration SQL ne semble nécessaire, car les périodes et la
+      relation entre une offre et une période existent déjà.
+    </div>
+  </main>
+</body>
+</html>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import OffersPage from "../src/pages/OffersPage.tsx";
 import { adminUser, contactUser, stubFetch, studentUser } from "./helpers/fetchMock.ts";
@@ -31,7 +31,7 @@ describe("OffersPage", () => {
     expect(await screen.findByText("Refonte du portail client")).toBeInTheDocument();
     expect(screen.getByText("Soumise")).toBeInTheDocument();
     expect(screen.getByText("Attribuée")).toBeInTheDocument();
-    expect(screen.getByText("Autre")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Autre" })).toBeInTheDocument();
     expect(screen.getByText("2 offres")).toBeInTheDocument();
     expect(screen.getByText("Les offres que vous avez déposées.")).toBeInTheDocument();
   });
@@ -65,5 +65,23 @@ describe("OffersPage", () => {
     render(<OffersPage user={contactUser} token="jeton" onUnauthorized={onUnauthorized} />);
 
     await waitFor(() => expect(onUnauthorized).toHaveBeenCalled());
+  });
+
+  it("filtre les offres par période et met à jour le compteur", async () => {
+    const fetchMock = stubFetch({
+      "/api/offers?period=P1": () => Response.json([offers[0]]),
+      "/api/offers": () => Response.json(offers),
+    });
+
+    render(<OffersPage user={adminUser} token="jeton" onUnauthorized={vi.fn()} />);
+    expect(await screen.findByText("2 offres")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Période"), { target: { value: "P1" } });
+
+    await waitFor(() => expect(screen.getByText("1 offre")).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/offers?period=P1",
+      expect.objectContaining({ headers: { Authorization: "jeton" } }),
+    );
   });
 });
