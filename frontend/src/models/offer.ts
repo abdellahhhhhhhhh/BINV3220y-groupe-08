@@ -13,4 +13,5 @@ export interface Offer {
   academicYear: string;
   period: PeriodCode;
   status: OfferStatus;
+  hasActiveApplication?: boolean;
 }

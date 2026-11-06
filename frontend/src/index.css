@@ -135,6 +135,29 @@ body {
   border-bottom: none;
 }
 
+.application-form {
+  display: flex;
+  min-width: 13rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+}
+
+.application-form label {
+  text-align: center;
+}
+
+.application-form textarea {
+  width: 100%;
+  min-height: 5rem;
+  box-sizing: border-box;
+  resize: vertical;
+}
+
+.application-form button {
+  align-self: center;
+}
+
 /* Statuts */
 
 .status-badge {

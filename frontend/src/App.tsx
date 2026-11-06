@@ -8,7 +8,8 @@ import HomePage from "./pages/HomePage.tsx";
 import LoginPage from "./pages/LoginPage.tsx";
 import NotFoundPage from "./pages/NotFoundPage.tsx";
 import OffersPage from "./pages/OffersPage.tsx";
-import { canListOffers } from "./utils/permissions.ts";
+import ApplicationsPage from "./pages/ApplicationsPage.tsx";
+import { canListApplications, canListOffers } from "./utils/permissions.ts";
 
 const App = () => {
   const auth = useAuth();
@@ -26,6 +27,18 @@ const App = () => {
             path="/offres"
             element={
               <OffersPage user={auth.user} token={auth.token} onUnauthorized={auth.logout} />
+            }
+          />
+        )}
+        {canListApplications(auth.user) && (
+          <Route
+            path="/candidatures"
+            element={
+              <ApplicationsPage
+                user={auth.user}
+                token={auth.token}
+                onUnauthorized={auth.logout}
+              />
             }
           />
         )}

@@ -3,6 +3,7 @@ import {
   isCompany,
   isCompanyList,
   isHealth,
+  isApplication,
   isOffer,
   isOfferList,
   isSession,
@@ -91,6 +92,34 @@ describe("isOffer", () => {
   it("accepte une offre valide", () => {
     expect(isOffer(offer)).toBe(true);
     expect(isOfferList([offer])).toBe(true);
+  });
+
+  describe("isApplication", () => {
+    it("accepte une candidature valide", () => {
+      expect(
+        isApplication({
+          id: 1,
+          offerId: 3,
+          studentId: 8,
+          message: null,
+          status: "IN_PROGRESS",
+          appliedAt: "2026-11-06 18:47:00",
+        }),
+      ).toBe(true);
+    });
+
+    it("refuse un statut inconnu", () => {
+      expect(
+        isApplication({
+          id: 1,
+          offerId: 3,
+          studentId: 8,
+          message: null,
+          status: "PUBLISHED",
+          appliedAt: "2026-11-06 18:47:00",
+        }),
+      ).toBe(false);
+    });
   });
 
   it.each([

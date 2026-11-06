@@ -158,13 +158,121 @@ récente à la plus ancienne, puis de la plus récente à la plus ancienne.
     "companyShortName": "Orbis",
     "academicYear": "2026-2027",
     "period": "P2",
-    "status": "PUBLISHED"
+    "status": "PUBLISHED",
+    "hasActiveApplication": true
   }
 ]
 ```
 
 `period` vaut `P1`, `P2` ou `OTHER`. `status` vaut `SUBMITTED` (soumise), `PENDING`
 (en attente), `PUBLISHED` (publiée), `ASSIGNED` (attribuée) ou `ARCHIVED` (archivée).
+Pour un étudiant, `hasActiveApplication` indique qu'une candidature `IN_PROGRESS`
+ou `SELECTED` existe pour l'offre. Ce champ n'est pas renvoyé aux autres profils.
 
 - `401` `UNAUTHENTICATED` : session absente ou invalide.
 - `403` `FORBIDDEN` : contact seulement promoteur ou signataire.
+
+## POST /applications
+
+Permet à un étudiant connecté de candidater à une offre publiée. Le serveur
+détermine l'étudiant à partir de la session ; `studentId` ne peut pas être fourni
+par le client.
+
+### Requête
+
+- Header `Authorization` obligatoire
+- Body JSON :
+
+```json
+{
+  "offerId": 3,
+  "message": "Je souhaite approfondir la conception d'API."
+}
+```
+
+`message` est facultatif et peut être `null`. Une candidature `IN_PROGRESS` ou
+`SELECTED` existe au plus une fois pour un même étudiant et une même offre. Une
+candidature `WITHDRAWN` ou `REJECTED` est conservée et n'empêche pas une
+nouvelle candidature.
+
+### Réponses
+
+- `201` :
+
+```json
+{
+  "id": 7,
+  "offerId": 3,
+  "studentId": 8,
+  "message": "Je souhaite approfondir la conception d'API.",
+  "status": "IN_PROGRESS",
+  "appliedAt": "2026-11-06 18:47:00"
+}
+```
+
+- `400` `INVALID_BODY` : `offerId` absent ou invalide, ou `message` qui n'est
+  pas une chaîne ou `null`.
+- `400` `INVALID_APPLICATION` : l'offre n'est pas publiée.
+- `400` `DUPLICATE_APPLICATION` : l'étudiant a déjà une candidature en cours
+  ou retenue pour cette offre.
+- `401` `UNAUTHENTICATED` : session absente ou invalide.
+- `403` `FORBIDDEN` : l'utilisateur connecté n'est pas un étudiant.
+
+## DELETE /applications/:id
+
+Retire la candidature indiquée si elle appartient à l'étudiant connecté et est
+encore `IN_PROGRESS`. La ligne est conservée et son statut devient `WITHDRAWN`.
+
+### Requête
+
+- Header `Authorization` obligatoire
+- Paramètre de chemin `id` : identifiant entier positif de la candidature
+
+### Réponses
+
+- `204` : candidature retirée, sans contenu.
+- `400` `INVALID_QUERY` : `id` n'est pas un entier positif.
+- `400` `INVALID_APPLICATION` : la candidature a déjà été traitée.
+- `401` `UNAUTHENTICATED` : session absente ou invalide.
+- `403` `FORBIDDEN` : l'utilisateur connecté n'est pas un étudiant.
+- `404` `NOT_FOUND` : candidature inexistante ou appartenant à un autre étudiant.
+- `404` `NOT_FOUND` : offre inexistante.
+
+## GET /applications
+
+Retourne les candidatures de l'étudiant connecté, avec le statut et les
+informations de l'offre. Le serveur filtre toujours sur l'identifiant de
+l'étudiant issu de la session.
+
+### Requête
+
+- Header `Authorization` obligatoire
+
+### Réponses
+
+- `200` :
+
+```json
+[
+  {
+    "id": 1,
+    "offerId": 1,
+    "studentId": 1,
+    "message": "Le développement React m'intéresse particulièrement.",
+    "status": "IN_PROGRESS",
+    "appliedAt": "2026-10-02 18:10:00",
+    "offer": {
+      "title": "Application React de gestion de flotte",
+      "companyShortName": "Lumen Digital",
+      "academicYear": "2026-2027",
+      "period": "P2"
+    }
+  }
+]
+```
+
+`status` vaut `IN_PROGRESS` (En cours), `SELECTED` (Retenue), `REJECTED`
+(Non retenue) ou `WITHDRAWN` (Retirée).
+
+- `401` `UNAUTHENTICATED` : session absente ou invalide.
+- `403` `FORBIDDEN` : l'utilisateur connecté n'est pas un étudiant.

@@ -17,6 +17,7 @@ export interface OfferDbo {
   period_code: PeriodCode;
   created_at: string;
   updated_at: string;
+  has_active_application: 0 | 1 | null;
 }
 
 export interface Offer {
@@ -30,6 +31,7 @@ export interface Offer {
   period: PeriodCode;
   createdAt: string;
   updatedAt: string;
+  hasActiveApplication?: boolean;
 }
 
 /** Offre exposée par l'API dans les listes. */
@@ -40,4 +42,5 @@ export interface OfferDto {
   academicYear: string;
   period: PeriodCode;
   status: OfferStatus;
+  hasActiveApplication?: boolean;
 }

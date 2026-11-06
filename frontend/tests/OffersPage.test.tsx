@@ -84,4 +84,62 @@ describe("OffersPage", () => {
       expect.objectContaining({ headers: { Authorization: "jeton" } }),
     );
   });
+
+  it("permet à un étudiant de candidater avec un message facultatif", async () => {
+    const fetchMock = stubFetch({
+      "/api/applications": () => Response.json({
+        id: 7,
+        offerId: 3,
+        studentId: 3,
+        message: "Mon message",
+        status: "IN_PROGRESS",
+        appliedAt: "2026-11-06 18:47:00",
+      }, { status: 201 }),
+      "/api/offers": () => Response.json([
+        { ...offers[0], status: "PUBLISHED", id: 3 },
+      ]),
+    });
+
+    render(<OffersPage user={studentUser} token="jeton" onUnauthorized={vi.fn()} />);
+
+    await screen.findByText("Refonte du portail client");
+    fireEvent.click(screen.getByRole("button", { name: "Candidater" }));
+    fireEvent.change(screen.getByLabelText("Message (facultatif)"), {
+      target: { value: "Mon message" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Envoyer" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/applications",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ offerId: 3, message: "Mon message" }),
+        }),
+      ),
+    );
+    expect(screen.queryByRole("button", { name: "Envoyer" })).not.toBeInTheDocument();
+  });
+
+  it("ne propose pas de candidature aux contacts", async () => {
+    stubFetch({ "/api/offers": () => Response.json(offers) });
+
+    render(<OffersPage user={contactUser} token="jeton" onUnauthorized={vi.fn()} />);
+
+    await screen.findByText("Refonte du portail client");
+    expect(screen.queryByRole("button", { name: "Candidater" })).not.toBeInTheDocument();
+  });
+
+  it("remplace le bouton par un indicateur vert si l'étudiant a déjà candidaté", async () => {
+    stubFetch({
+      "/api/offers": () => Response.json([
+        { ...offers[0], status: "PUBLISHED", id: 3, hasActiveApplication: true },
+      ]),
+    });
+
+    render(<OffersPage user={studentUser} token="jeton" onUnauthorized={vi.fn()} />);
+
+    expect(await screen.findByText("Déjà candidaté")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Candidater" })).not.toBeInTheDocument();
+  });
 });
