@@ -4,6 +4,8 @@ import ErrorState from "../components/ErrorState.tsx";
 import LoadingState from "../components/LoadingState.tsx";
 import OfferTable from "../components/OfferTable.tsx";
 import { useOffers } from "../hooks/useOffers.ts";
+import { createApplication } from "../services/applications.service.ts";
+import { isUnauthorized } from "../utils/api.ts";
 import type { PeriodCode } from "../models/offer.ts";
 import type { User } from "../models/user.ts";
 
@@ -28,11 +30,32 @@ const PERIOD_OPTIONS: { value: PeriodCode | ""; label: string }[] = [
 
 const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
   const [period, setPeriod] = useState<PeriodCode | "">("");
+  const [applyingOfferId, setApplyingOfferId] = useState<number | null>(null);
+  const [applicationError, setApplicationError] = useState<string | null>(null);
+  const [appliedOfferIds, setAppliedOfferIds] = useState<Set<number>>(() => new Set());
   const { offers, isLoading, error } = useOffers(
     token,
     onUnauthorized,
     period === "" ? undefined : period,
   );
+
+  const apply = async (offerId: number, message: string) => {
+    setApplyingOfferId(offerId);
+    setApplicationError(null);
+    try {
+      await createApplication(token, offerId, message);
+      setAppliedOfferIds((ids) => new Set(ids).add(offerId));
+    } catch (reason: unknown) {
+      if (isUnauthorized(reason)) {
+        onUnauthorized();
+      } else {
+        setApplicationError(reason instanceof Error ? reason.message : "Erreur inconnue");
+        throw reason;
+      }
+    } finally {
+      setApplyingOfferId(null);
+    }
+  };
 
   const renderContent = () => {
     if (error) return <ErrorState message={error} />;
@@ -43,7 +66,14 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
         <p className="result-count">
           {offers.length} offre{offers.length > 1 ? "s" : ""}
         </p>
-        <OfferTable offers={offers} />
+        <OfferTable
+          offers={offers}
+          canApply={user.kind === "STUDENT"}
+          appliedOfferIds={appliedOfferIds}
+          onApply={user.kind === "STUDENT" ? apply : undefined}
+          applyingOfferId={applyingOfferId}
+          applicationError={applicationError}
+        />
       </>
     );
   };

@@ -11,7 +11,7 @@ import { hasContactRole, isAdmin, isStudent } from "./permissions.ts";
  */
 const visibilityFilter = (viewer: User, period?: PeriodCode): OfferFilter => {
   if (isAdmin(viewer)) return { period };
-  if (isStudent(viewer)) return { status: "PUBLISHED", period };
+  if (isStudent(viewer)) return { status: "PUBLISHED", period, studentId: viewer.id };
   if (hasContactRole(viewer, "DEPOSITOR")) return { depositorContactId: viewer.id, period };
   throw new HttpError(403, "FORBIDDEN", "Vous n'avez pas accès aux offres");
 };

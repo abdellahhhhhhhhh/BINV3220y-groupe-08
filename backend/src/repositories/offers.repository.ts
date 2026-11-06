@@ -8,12 +8,14 @@ export interface OfferFilter {
   depositorContactId?: number;
   /** Limite aux offres de cette période. */
   period?: PeriodCode;
+  studentId?: number;
 }
 
 interface FindAllParams {
   status: OfferStatus | null;
   depositorContactId: number | null;
   period: PeriodCode | null;
+  studentId: number | null;
 }
 
 export const createOffersRepository = (db: Db) => {
@@ -22,7 +24,15 @@ export const createOffersRepository = (db: Db) => {
            o.company_id, c.short_name AS company_short_name,
            o.depositor_contact_id,
            ay.label AS academic_year_label, p.code AS period_code,
-           o.created_at, o.updated_at
+           o.created_at, o.updated_at,
+           CASE WHEN @studentId IS NULL THEN NULL
+                WHEN EXISTS (
+                  SELECT 1
+                  FROM applications a
+                  WHERE a.offer_id = o.id
+                    AND a.student_id = @studentId
+                    AND a.status IN ('IN_PROGRESS', 'SELECTED')
+                ) THEN 1 ELSE 0 END AS has_active_application
     FROM offers o
     JOIN companies c ON c.id = o.company_id
     JOIN academic_years ay ON ay.id = o.academic_year_id
@@ -35,11 +45,12 @@ export const createOffersRepository = (db: Db) => {
 
   return {
     /** Offres correspondant au filtre, de la plus récente année à la plus ancienne. */
-    findAll: ({ status, depositorContactId, period }: OfferFilter): OfferDbo[] =>
+    findAll: ({ status, depositorContactId, period, studentId }: OfferFilter): OfferDbo[] =>
       findAll.all({
         status: status ?? null,
         depositorContactId: depositorContactId ?? null,
         period: period ?? null,
+        studentId: studentId ?? null,
       }),
   };
 };

@@ -1,0 +1,31 @@
+### Connexion de démo : étudiant sans candidature
+# @name student
+POST http://localhost:3000/auth/demo-login
+Content-Type: application/json
+
+{ "kind": "STUDENT", "id": 8 }
+
+### Candidater à une offre publiée, avec un message facultatif
+POST http://localhost:3000/applications
+Authorization: {{student.response.body.token}}
+Content-Type: application/json
+
+{
+  "offerId": 3,
+  "message": "Je souhaite approfondir la conception d'API."
+}
+
+### Candidater sans message
+POST http://localhost:3000/applications
+Authorization: {{student.response.body.token}}
+Content-Type: application/json
+
+{ "offerId": 7 }
+
+### Consulter les candidatures de l'étudiant connecté
+GET http://localhost:3000/applications
+Authorization: {{student.response.body.token}}
+
+### Retirer une candidature en cours
+DELETE http://localhost:3000/applications/1
+Authorization: {{student.response.body.token}}

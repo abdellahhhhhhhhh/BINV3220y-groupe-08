@@ -82,6 +82,15 @@ describe("GET /offers : visibilité selon le profil", () => {
     expect(response.body.every((o: { status: string }) => o.status === "PUBLISHED")).toBe(true);
   });
 
+  it("indique à l'étudiant les offres avec une candidature active ou retenue", async () => {
+    const response = await listOffersAs("STUDENT", STUDENT.LUCAS_DUPONT);
+
+    expect(response.body.find((offer: { id: number }) => offer.id === OFFER.FLEET_APP))
+      .toMatchObject({ hasActiveApplication: true });
+    expect(response.body.find((offer: { id: number }) => offer.id === OFFER.BILLING_API))
+      .toMatchObject({ hasActiveApplication: false });
+  });
+
   it("montre à un déposant toutes ses offres, quel que soit leur statut", async () => {
     const response = await listOffersAs("CONTACT", CONTACT.MARC_LEJEUNE);
 
