@@ -1,6 +1,6 @@
 import request from "supertest";
 import { beforeEach, describe, expect, it } from "vitest";
-import { OFFER, STUDENT, CONTACT } from "../src/db/seed/seedIds.ts";
+import { APPLICATION, OFFER, STUDENT, CONTACT } from "../src/db/seed/seedIds.ts";
 import type { UserKind } from "../src/models/user.ts";
 import { createTestApp, tokenFor } from "./helpers/testApp.ts";
 
@@ -207,5 +207,113 @@ describe("POST /applications : création et doublons", () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error.code).toBe("DUPLICATE_APPLICATION");
+  });
+});
+
+describe("POST /applications : nouvelle candidature après un retrait", () => {
+  it("accepte une nouvelle candidature quand la précédente a été retirée, puis refuse le doublon", async () => {
+    const response = await applyAs("STUDENT", STUDENT.INES_HADDAD, { offerId: OFFER.BILLING_API });
+
+    expect(response.status).toBe(201);
+    expect(response.body).toMatchObject({
+      offerId: OFFER.BILLING_API,
+      studentId: STUDENT.INES_HADDAD,
+      status: "IN_PROGRESS",
+    });
+
+    const applications = await listAs("STUDENT", STUDENT.INES_HADDAD);
+    expect(applications.body).toHaveLength(3);
+    const statuses = applications.body
+      .filter((application: { offerId: number }) => application.offerId === OFFER.BILLING_API)
+      .map((application: { status: string }) => application.status)
+      .sort();
+    expect(statuses).toEqual(["IN_PROGRESS", "WITHDRAWN"]);
+
+    const duplicate = await applyAs("STUDENT", STUDENT.INES_HADDAD, { offerId: OFFER.BILLING_API });
+    expect(duplicate.status).toBe(400);
+    expect(duplicate.body.error.code).toBe("DUPLICATE_APPLICATION");
+  });
+});
+
+describe("POST /applications : un refus ne crée aucune candidature", () => {
+  it.each([
+    ["offre non publiée", OFFER.E2E_TESTS, 400],
+    ["offre inexistante", 999, 404],
+  ])("%s : refuse et ne crée rien", async (_cas, offerId, expectedStatus) => {
+    const response = await applyAs("STUDENT", STUDENT.DMYTRO_KOVALENKO, { offerId });
+
+    expect(response.status).toBe(expectedStatus);
+    const applications = await listAs("STUDENT", STUDENT.DMYTRO_KOVALENKO);
+    expect(applications.status).toBe(200);
+    expect(applications.body).toEqual([]);
+  });
+});
+
+describe("POST /applications : validation du corps, champ par champ", () => {
+  it.each([
+    ["offerId en chaîne", { offerId: "3" }],
+    ["offerId décimal", { offerId: 1.5 }],
+    ["offerId nul", { offerId: 0 }],
+    ["offerId absent", { message: "Bonjour" }],
+    ["message numérique", { offerId: OFFER.BILLING_API, message: 42 }],
+  ])("refuse un corps invalide : %s", async (_cas, body) => {
+    const response = await applyAs("STUDENT", STUDENT.DMYTRO_KOVALENKO, body);
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("INVALID_BODY");
+    const applications = await listAs("STUDENT", STUDENT.DMYTRO_KOVALENKO);
+    expect(applications.body).toEqual([]);
+  });
+});
+
+describe("GET /applications : les quatre statuts", () => {
+  it.each([
+    ["en cours", STUDENT.LUCAS_DUPONT, OFFER.FLEET_APP, "IN_PROGRESS"],
+    ["retenue", STUDENT.MATEUSZ_KOWALSKI, OFFER.CLOUD_MIGRATION, "SELECTED"],
+    ["non retenue", STUDENT.LEA_MERTENS, OFFER.CLOUD_MIGRATION, "REJECTED"],
+    ["retirée", STUDENT.INES_HADDAD, OFFER.BILLING_API, "WITHDRAWN"],
+  ])("renvoie le statut %s", async (_libelle, studentId, offerId, status) => {
+    const response = await listAs("STUDENT", studentId);
+
+    expect(response.status).toBe(200);
+    expect(
+      response.body.every((application: { studentId: number }) => application.studentId === studentId),
+    ).toBe(true);
+    const application = response.body.find(
+      (candidate: { offerId: number }) => candidate.offerId === offerId,
+    );
+    expect(application).toMatchObject({ studentId, status });
+  });
+});
+
+describe("DELETE /applications/:id : un refus ne modifie pas la candidature", () => {
+  it.each([
+    ["retenue", STUDENT.MATEUSZ_KOWALSKI, APPLICATION.MATEUSZ_CLOUD_MIGRATION, "SELECTED"],
+    ["non retenue", STUDENT.LEA_MERTENS, APPLICATION.LEA_CLOUD_MIGRATION, "REJECTED"],
+    ["retirée", STUDENT.INES_HADDAD, APPLICATION.INES_BILLING_API, "WITHDRAWN"],
+  ])(
+    "refuse de retirer sa propre candidature %s et garde son statut",
+    async (_libelle, studentId, applicationId, status) => {
+      const response = await withdrawAs("STUDENT", studentId, applicationId);
+
+      expect(response.status).toBe(400);
+      expect(response.body.error.code).toBe("INVALID_APPLICATION");
+      const applications = await listAs("STUDENT", studentId);
+      const application = applications.body.find(
+        (candidate: { id: number }) => candidate.id === applicationId,
+      );
+      expect(application.status).toBe(status);
+    },
+  );
+
+  it("laisse intacte la candidature d'un autre étudiant quand le retrait est refusé (404)", async () => {
+    const response = await withdrawAs("STUDENT", STUDENT.LUCAS_DUPONT, APPLICATION.INES_FLEET_APP);
+
+    expect(response.status).toBe(404);
+    const applications = await listAs("STUDENT", STUDENT.INES_HADDAD);
+    const application = applications.body.find(
+      (candidate: { id: number }) => candidate.id === APPLICATION.INES_FLEET_APP,
+    );
+    expect(application.status).toBe("IN_PROGRESS");
   });
 });
