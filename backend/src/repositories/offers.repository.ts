@@ -8,6 +8,8 @@ export interface OfferFilter {
   depositorContactId?: number;
   /** Limite aux offres de cette période. */
   period?: PeriodCode;
+  /** Limite aux offres dont le titre contient ce texte. */
+  search?: string;
   studentId?: number;
 }
 
@@ -15,6 +17,7 @@ interface FindAllParams {
   status: OfferStatus | null;
   depositorContactId: number | null;
   period: PeriodCode | null;
+  search: string | null;
   studentId: number | null;
 }
 
@@ -40,16 +43,18 @@ export const createOffersRepository = (db: Db) => {
     WHERE (@status IS NULL OR o.status = @status)
       AND (@depositorContactId IS NULL OR o.depositor_contact_id = @depositorContactId)
       AND (@period IS NULL OR p.code = @period)
+      AND (@search IS NULL OR LOWER(o.title) LIKE '%' || LOWER(@search) || '%')
     ORDER BY ay.start_date DESC, o.created_at DESC
   `);
 
   return {
     /** Offres correspondant au filtre, de la plus récente année à la plus ancienne. */
-    findAll: ({ status, depositorContactId, period, studentId }: OfferFilter): OfferDbo[] =>
+    findAll: ({ status, depositorContactId, period, search, studentId }: OfferFilter): OfferDbo[] =>
       findAll.all({
         status: status ?? null,
         depositorContactId: depositorContactId ?? null,
         period: period ?? null,
+        search: search ?? null,
         studentId: studentId ?? null,
       }),
   };

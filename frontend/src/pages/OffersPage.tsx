@@ -30,6 +30,7 @@ const PERIOD_OPTIONS: { value: PeriodCode | ""; label: string }[] = [
 
 const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
   const [period, setPeriod] = useState<PeriodCode | "">("");
+  const [search, setSearch] = useState("");
   const [applyingOfferId, setApplyingOfferId] = useState<number | null>(null);
   const [applicationError, setApplicationError] = useState<string | null>(null);
   const [appliedOfferIds, setAppliedOfferIds] = useState<Set<number>>(() => new Set());
@@ -37,6 +38,7 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
     token,
     onUnauthorized,
     period === "" ? undefined : period,
+    search.trim() === "" ? undefined : search.trim(),
   );
 
   const apply = async (offerId: number, message: string) => {
@@ -60,7 +62,13 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
   const renderContent = () => {
     if (error) return <ErrorState message={error} />;
     if (isLoading) return <LoadingState />;
-    if (offers.length === 0) return <EmptyState message="Aucune offre à afficher." />;
+    if (offers.length === 0) {
+      return (
+        <EmptyState
+          message={search.trim() === "" ? "Aucune offre à afficher." : "Aucune offre ne correspond à votre recherche."}
+        />
+      );
+    }
     return (
       <>
         <p className="result-count">
@@ -82,6 +90,13 @@ const OffersPage = ({ user, token, onUnauthorized }: OffersPageProps) => {
     <section>
       <h1>Offres de stage</h1>
       <p>{DESCRIPTIONS[user.kind]}</p>
+      <label htmlFor="offer-search">Recherche</label>
+      <input
+        id="offer-search"
+        type="search"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+      />
       <label htmlFor="offer-period">Période</label>
       <select
         id="offer-period"

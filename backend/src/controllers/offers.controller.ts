@@ -9,6 +9,15 @@ import { HttpError } from "../utils/httpError.ts";
 
 const PERIOD_CODES = ["P1", "P2", "OTHER"] as const;
 
+const parseSearch = (value: unknown): string | undefined => {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string") {
+    throw new HttpError(400, "INVALID_QUERY", "Le paramètre q doit apparaître une seule fois");
+  }
+  const search = value.trim();
+  return search === "" ? undefined : search;
+};
+
 const parsePeriod = (value: unknown): PeriodCode | undefined => {
   if (value === undefined) return undefined;
   if (typeof value !== "string" || !PERIOD_CODES.includes(value as PeriodCode)) {
@@ -21,8 +30,9 @@ export const createOffersRouter = (offersService: OffersService) => {
   const router = Router();
 
   router.get("/", authorize(canListOffers), (req, res) => {
+    const search = parseSearch(req.query.q);
     const period = parsePeriod(req.query.period);
-    res.json(offersService.listOffers(getCurrentUser(req), period).map(toOfferDto));
+    res.json(offersService.listOffers(getCurrentUser(req), period, search).map(toOfferDto));
   });
 
   return router;
