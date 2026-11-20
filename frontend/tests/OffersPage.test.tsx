@@ -85,6 +85,39 @@ describe("OffersPage", () => {
     );
   });
 
+  it("recherche par expression dans le titre et combine la période", async () => {
+    const fetchMock = stubFetch({
+      "/api/offers?q=API%20REST&period=P2": () => Response.json([offers[0]]),
+      "/api/offers": () => Response.json(offers),
+    });
+
+    render(<OffersPage user={adminUser} token="jeton" onUnauthorized={vi.fn()} />);
+    expect(await screen.findByText("2 offres")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "  API REST  " } });
+    fireEvent.change(screen.getByLabelText("Période"), { target: { value: "P2" } });
+
+    await waitFor(() => expect(screen.getByText("1 offre")).toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/offers?q=API%20REST&period=P2",
+      expect.objectContaining({ headers: { Authorization: "jeton" } }),
+    );
+  });
+
+  it("affiche un message adapté lorsqu'aucune offre ne correspond à la recherche", async () => {
+    stubFetch({
+      "/api/offers?q=introuvable": () => Response.json([]),
+      "/api/offers": () => Response.json(offers),
+    });
+
+    render(<OffersPage user={adminUser} token="jeton" onUnauthorized={vi.fn()} />);
+    expect(await screen.findByText("2 offres")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Recherche"), { target: { value: "introuvable" } });
+
+    expect(await screen.findByText("Aucune offre ne correspond à votre recherche.")).toBeInTheDocument();
+  });
+
   it("permet à un étudiant de candidater avec un message facultatif", async () => {
     const fetchMock = stubFetch({
       "/api/applications": () => Response.json({

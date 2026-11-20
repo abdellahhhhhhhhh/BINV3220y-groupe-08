@@ -35,6 +35,34 @@ describe("GET /offers : accès", () => {
 });
 
 describe("GET /offers : visibilité selon le profil", () => {
+  it("recherche une expression insensible à la casse dans le titre et combine la période", async () => {
+    const response = await request(app)
+      .get("/offers?q=%20api%20rest%20&period=P2")
+      .set("Authorization", tokenFor("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ));
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.BILLING_API]);
+  });
+
+  it("conserve la visibilité publiée pour un étudiant lors d'une recherche", async () => {
+    const response = await request(app)
+      .get("/offers?q=application")
+      .set("Authorization", tokenFor("STUDENT", STUDENT.LUCAS_DUPONT));
+
+    expect(response.status).toBe(200);
+    expect(offerIds(response.body)).toEqual([OFFER.FLEET_APP]);
+    expect(response.body.every((offer: { status: string }) => offer.status === "PUBLISHED")).toBe(true);
+  });
+
+  it("n'expose pas à un étudiant une offre non publiée correspondant à la recherche", async () => {
+    const response = await request(app)
+      .get("/offers?q=portail")
+      .set("Authorization", tokenFor("STUDENT", STUDENT.LUCAS_DUPONT));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+
   it("filtre les offres par période sans contourner la visibilité", async () => {
     const response = await listOffersAs("STUDENT", STUDENT.LUCAS_DUPONT);
     const filteredResponse = await request(app)
@@ -128,6 +156,25 @@ describe("GET /offers : visibilité selon le profil", () => {
 });
 
 describe("GET /offers : validation du filtre", () => {
+  it.each(["", "%20%20"])("ignore une recherche vide ou composée d'espaces (%s)", async (query) => {
+    const withoutQuery = await listOffersAs("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ);
+    const withQuery = await request(app)
+      .get(`/offers?q=${query}`)
+      .set("Authorization", tokenFor("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ));
+
+    expect(withQuery.status).toBe(200);
+    expect(withQuery.body).toEqual(withoutQuery.body);
+  });
+
+  it("retourne une liste vide lorsqu'aucun titre ne correspond", async () => {
+    const response = await request(app)
+      .get("/offers?q=introuvable")
+      .set("Authorization", tokenFor("ADMIN", ADMINISTRATOR.ANNE_LECLERCQ));
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([]);
+  });
+
   it("refuse une période inconnue", async () => {
     const response = await request(app)
       .get("/offers?period=P3")
