@@ -145,6 +145,9 @@ récente à la plus ancienne, puis de la plus récente à la plus ancienne.
 ### Requête
 
 - Header `Authorization` obligatoire
+- Paramètre facultatif `q` : expression recherchée dans le titre, sans tenir compte de la
+  casse. Les espaces au début et à la fin sont ignorés ; une valeur vide est ignorée.
+- Paramètre facultatif `period` : `P1`, `P2` ou `OTHER`.
 
 ### Réponses
 
