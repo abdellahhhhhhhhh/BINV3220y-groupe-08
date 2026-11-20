@@ -169,6 +169,37 @@ const insertInternship = (overrides: Record<string, unknown> = {}) =>
     });
 
 describe("candidatures et stages", () => {
+  it("refuse les doublons actifs mais conserve les doublons historiques", () => {
+    const insertApplication = (
+      studentId: number,
+      offerId: number,
+      status: "IN_PROGRESS" | "SELECTED" | "REJECTED" | "WITHDRAWN",
+    ) =>
+      db
+        .prepare(
+          `INSERT INTO applications (student_id, offer_id, status)
+           VALUES (?, ?, ?)`,
+        )
+        .run(studentId, offerId, status);
+
+    insertApplication(STUDENT.DMYTRO_KOVALENKO, OFFER.BILLING_API, "IN_PROGRESS");
+    expect(() =>
+      insertApplication(STUDENT.DMYTRO_KOVALENKO, OFFER.BILLING_API, "IN_PROGRESS"),
+    ).toThrow(/UNIQUE/);
+
+    insertApplication(STUDENT.DMYTRO_KOVALENKO, OFFER.INTERNAL_CHATBOT, "SELECTED");
+    expect(() =>
+      insertApplication(STUDENT.DMYTRO_KOVALENKO, OFFER.INTERNAL_CHATBOT, "IN_PROGRESS"),
+    ).toThrow(/UNIQUE/);
+
+    expect(() =>
+      insertApplication(STUDENT.DMYTRO_KOVALENKO, OFFER.FLEET_APP, "WITHDRAWN"),
+    ).not.toThrow();
+    expect(() =>
+      insertApplication(STUDENT.DMYTRO_KOVALENKO, OFFER.FLEET_APP, "REJECTED"),
+    ).not.toThrow();
+  });
+
   it("accepte un stage valide, avec ou sans promoteur", () => {
     expect(() => insertInternship()).not.toThrow();
     expect(() => insertInternship({ promoter_contact_id: null })).not.toThrow();
