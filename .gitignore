@@ -1,5 +1,7 @@
 # Dépendances et builds
 node_modules/
+test-results/
+playwright-report/
 dist/
 coverage/
 
@@ -16,3 +18,4 @@ env/*.env
 # Système et éditeurs
 .DS_Store
 *.log
+.playwright-mcp/
