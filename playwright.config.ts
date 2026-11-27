@@ -1,10 +1,15 @@
-import config from './e2e/playwright.config.ts';
+import { defineConfig, devices } from "@playwright/test";
 
-export default {
-  ...config,
-  testDir: './e2e',
+export default defineConfig({
+  testDir: "./e2e",
+  workers: 1,
+  projects: [
+    {
+      name: "chromium",
+      use: { ...devices["Desktop Chrome"] },
+    },
+  ],
   use: {
-    ...config.use,
-    baseURL: 'http://localhost:5173',
+    baseURL: "http://localhost:5173",
   },
-};
+});

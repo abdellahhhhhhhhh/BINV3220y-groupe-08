@@ -56,7 +56,7 @@ test("Scénario 1 — recherche avec résultat", async ({ page }) => {
       page.getByRole("cell", { name: title, exact: true }),
     ).toBeHidden();
   }
-}
+});
 
 test("Scénario 2 — recherche d’une offre non publiée", async ({ page }) => {
   await openOffersAsLucas(page);
@@ -64,7 +64,7 @@ test("Scénario 2 — recherche d’une offre non publiée", async ({ page }) =>
 
   await page.getByRole("searchbox", { name: "Recherche" }).fill("portail");
 
-  await expect(page.getByText("0 offre", { exact: true })).toBeVisible();
+  await expect(page.getByText(/^\d+ offres?$/)).toHaveCount(0);
   await expect(
     page.getByText("Aucune offre ne correspond à votre recherche.", {
       exact: true,
