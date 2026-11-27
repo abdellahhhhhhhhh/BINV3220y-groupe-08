@@ -18,3 +18,4 @@ env/*.env
 # Système et éditeurs
 .DS_Store
 *.log
+.playwright-mcp/
